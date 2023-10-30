@@ -1,52 +1,48 @@
 const { MongoClient } = require('mongodb');
 
 class DBClient {
-    constructor() {
-        const host = process.env.DB_HOST || 'localhost';
-        const port = process.env.DB_PORT || 27017;
-        const database = process.env.DB_DATABASE || 'files_manager';
-        this.url = `mongodb://${host}:${port}`;
-    }
+  constructor() {
+    const dbHost = process.env.DB_HOST || 'localhost';
+    const dbPort = process.env.DB_PORT || 27017;
+    const dbName = process.env.DB_DATABASE || 'files_manager';
 
-    async isAlive() {
-        try {
-            const client = new MongoClient(this.url, { useUnifiedTopology: true });
-            await client.connect();
-            await client.close();
-            return true;
-        } catch (error) {
-            return false;
-        }
-    }
+    const url = `mongodb://${dbHost}:${dbPort}`;
+    this.client = new MongoClient(url, { useUnifiedTopology: true });
 
-    async nbUsers() {
-        try {
-            const client = new MongoClient(this.url, { useUnifiedTopology: true });
-            await client.connect();
-            const collection = client.db().collection('users');
-            const count = await collection.countDocuments();
-            await client.close();
-            return count;
-        } catch (error) {
-            return -1;
-        }
-    }
+    this.client.connect()
+      .then(() => {
+        console.log('Connected to MongoDB');
+      })
+      .catch((error) => {
+        console.error(`MongoDB Connection Error: ${error}`);
+      });
+  }
 
-    async nbFiles() {
-        try {
-            const client = new MongoClient(this.url, { useUnifiedTopology: true });
-            await client.connect();
-            const collection = client.db().collection('files');
-            const count = await collection.countDocuments();
-            await client.close();
-            return count;
-        } catch (error) {
-            return -1;
-        }
+  isAlive() {
+    return this.client.isConnected();
+  }
+
+  async nbUsers() {
+    if (!this.isAlive()) {
+      throw new Error('Database connection is not alive.');
     }
+    const db = this.client.db(process.env.DB_DATABASE);
+    const usersCollection = db.collection('users');
+    const userCount = await usersCollection.countDocuments();
+    return userCount;
+  }
+
+  async nbFiles() {
+    if (!this.isAlive()) {
+      throw new Error('Database connection is not alive.');
+    }
+    const db = this.client.db(process.env.DB_DATABASE);
+    const filesCollection = db.collection('files');
+    const fileCount = await filesCollection.countDocuments();
+    return fileCount;
+  }
 }
 
 const dbClient = new DBClient();
-
-module.exports = { dbClient };
+module.exports = dbClient;
 
