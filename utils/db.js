@@ -4,7 +4,6 @@ class DBClient {
   constructor() {
     const dbHost = process.env.DB_HOST || 'localhost';
     const dbPort = process.env.DB_PORT || 27017;
-    const dbName = process.env.DB_DATABASE || 'files_manager';
 
     const url = `mongodb://${dbHost}:${dbPort}`;
     this.client = new MongoClient(url, { useUnifiedTopology: true });
@@ -43,6 +42,6 @@ class DBClient {
   }
 }
 
+// Create and export an instance of DBClient
 const dbClient = new DBClient();
 module.exports = dbClient;
-
