@@ -1,38 +1,35 @@
-const { dbClient } = require('../utils/db');
-const { hashSHA1 } = require('../utils/hash');
+const crypto = require('crypto');
+const dbClient = require('../utils/db');
 
-const UsersController = {
-  postNew: async (req, res) => {
-    try {
-      const { email, password } = req.body;
+class UsersController {
+  static async postNew(req, res) {
+    const { password, email } = req.body;
 
-      if (!email) {
-        return res.status(400).json({ error: 'Missing email' });
-      }
+    const db = dbClient.client.db(process.env.DB_DATABASE);
+    const usersCollection = db.collection('users');
+    const existingUser = await usersCollection.findOne({ email });
 
-      if (!password) {
-        return res.status(400).json({ error: 'Missing password' });
-      }
-
-      const userExists = await dbClient.doesUserExist(email);
-      if (userExists) {
-        return res.status(400).json({ error: 'Already exist' });
-      }
-
-      const hashedPassword = hashSHA1(password);
-
-      const newUser = {
-        email,
-        password: hashedPassword,
-      };
-
-      const result = await dbClient.createUser(newUser);
-
-      res.status(201).json({ email: result.ops[0].email, id: result.insertedId });
-    } catch (error) {
-      res.status(500).json({ error: 'Internal Server Error' });
+    if (existingUser) {
+      return res.status(400).json({ error: 'Already exists' });
     }
-  },
-};
+
+    const hashedPassword = crypto.createHash('sha1').update(password).digest('hex');
+
+    const newUser = {
+      email,
+      password: hashedPassword,
+    };
+
+    const result = await usersCollection.insertOne(newUser);
+
+    res.status(201).json({
+      id: result.insertedId,
+      email: newUser.email,
+    });
+
+    // Return the response to indicate function completion
+    return res;
+  }
+}
 
 module.exports = UsersController;
