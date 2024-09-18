@@ -27,7 +27,7 @@ class DBClient {
   async isAlive() {
     try {
       await this.client.db(this.dbName).command({ ping: 1 });
-      return true;
+      return 1;
     } catch (error) {
       return false;
     }
