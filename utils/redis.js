@@ -1,9 +1,9 @@
-const redis = require('redis');
+import { createClient } from'redis';
 const { promisify } = require('util');
 
 class RedisClient {
   constructor() {
-    this.client = redis.createClient();
+    this.client = createClient();
 
     this.client.on('error', (err) => {
       console.error(`Redis Error: ${err}`);
@@ -47,4 +47,4 @@ class RedisClient {
 }
 
 const redisClient = new RedisClient();
-module.exports = redisClient;
+export default redisClient;

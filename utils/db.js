@@ -27,8 +27,9 @@ class DBClient {
   async isAlive() {
     try {
       await this.client.db(this.dbName).command({ ping: 1 });
-      return 1;
+      return true;
     } catch (error) {
+      console.error('Erroe to ping MongoDB:', error);
       return false;
     }
   }
