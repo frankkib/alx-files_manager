@@ -1,9 +1,11 @@
-const express = require('express');
+import { Router } from 'express';
+import AppController from '../controllers/AppController';
+import AuthController from '../controllers/AuthController';
+import UserController from '../controllers/UsersController';
+import FilesController from '../controllers/FilesController';
+import validateToken from '../middleware/valtokens';
 
-const router = express.Router();
-const AppController = require('../controllers/AppController');
-const AuthController = require('../controllers/AuthController');
-const UserController = require('../controllers/UsersController');
+const router = Router();
 
 router.get('/status', AppController.getStatus);
 router.get('/stats', AppController.getStats);
@@ -11,5 +13,6 @@ router.post('/users', UserController.postNew);
 router.get('/connect', AuthController.getConnect);
 router.get('/disconnect', AuthController.getDisconnect);
 router.get('/users/me', UserController.getMe);
+router.post('/files', validateToken, FilesController.postUpload);
 
-module.exports = router;
+export default router;
