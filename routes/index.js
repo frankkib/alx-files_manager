@@ -2,8 +2,8 @@ import { Router } from 'express';
 import AppController from '../controllers/AppController';
 import AuthController from '../controllers/AuthController';
 import UserController from '../controllers/UsersController';
-// import FilesController from '../controllers/FilesController';
-// import validateToken from '../middleware/validateToken';
+import FilesController from '../controllers/FilesController';
+import validateToken from '../middleware/validateToken';
 
 const router = Router();
 
@@ -13,6 +13,6 @@ router.post('/users', UserController.postNew);
 router.get('/connect', AuthController.getConnect);
 router.get('/disconnect', AuthController.getDisconnect);
 router.get('/users/me', UserController.getMe);
-// vrouter.post('/files', validateToken, FilesController.postUpload);
+router.post('/files', validateToken, FilesController.postUpload);
 
 export default router;
