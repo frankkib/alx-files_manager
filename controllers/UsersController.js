@@ -10,17 +10,7 @@ class UsersController {
     if (!password) {
       return res.status(400).json({ error: 'Missing password' });
     }
-
-    // Ensure the database connection is established
-    if (!dbClient.isAlive()) {
-      return res.status(500).json({ error: 'Database connection not established' });
-    }
-
-    // Ensure dbClient.db is defined
-    if (!dbClient.db) {
-      return res.status(500).json({ error: 'Database not initialized' });
-    }
-
+    
     const userExists = await dbClient.db.collection('users').findOne({ email });
     if (userExists) {
       return res.status(400).json({ error: 'Already exist' });
