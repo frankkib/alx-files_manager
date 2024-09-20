@@ -3,7 +3,7 @@ import AppController from '../controllers/AppController';
 import AuthController from '../controllers/AuthController';
 import UserController from '../controllers/UsersController';
 // import FilesController from '../controllers/FilesController';
-// import validateToken from '../middleware/valtokens';
+// import validateToken from '../middleware/validateToken';
 
 const router = Router();
 
