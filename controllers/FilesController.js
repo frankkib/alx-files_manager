@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
 import { promisify } from 'util';
 import path from 'path';
+import { ObjectId } from 'mongodb';
 import redisClient from '../utils/redis';
 import dbClient from '../utils/db';
 
@@ -102,6 +103,49 @@ class FilesController {
       parentId,
       localPath,
     });
+  }
+
+  static async getShow(req, res) {
+    const token = req.headers['x-token'];
+    const userId = await redisClient.get(`auth_${token}`);
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const fileId = req.params.id;
+    if (!ObjectId.isValid(fileId)) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    const file = await dbClient.filesCollection.findOne({
+      _id: ObjectId(fileId),
+      userId,
+    });
+    if (!file) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    return res.status(200).json(file);
+  }
+
+  static async getIndex(req, res) {
+    const token = req.headers['x-token'];
+    const userId = await redisClient.get(`auth_${token}`);
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const { parentId = 0, page = 0 } = req.query;
+    const pageNumber = Math.max(0, parseInt(page, 10) || 0);
+    const pageSize = 20;
+    const skip = pageNumber * pageSize;
+
+    const filter = {
+      userId,
+      parentId: parentId === '0' ? 0 : ObjectId(parentId),
+    };
+    const files = await dbClient.filesCollection
+      .find(filter)
+      .skip(skip)
+      .limit(pageSize)
+      .toArray();
+    return res.status(200).json(files);
   }
 }
 
