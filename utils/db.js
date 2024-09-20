@@ -4,12 +4,12 @@ import { MongoClient } from 'mongodb';
 class DBClient {
   constructor() {
     const host = process.env.DB_HOST || 'localhost';
-    const port = process.env.DB_PORT || 27017;
+    const port = process.env.DB_PORT || '27017';
     const database = process.env.DB_DATABASE || 'files_manager';
+    const uri = `mongodb://${host}:${port}/${database}`;
 
-    const uri = `mongodb://${host}:${port}`;
-    this.client = new MongoClient(uri, { useUnifiedTopology: true });
-    this.dbName = database;
+    this.client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+    this.connected = false;
 
     this.connect();
   }
@@ -17,42 +17,29 @@ class DBClient {
   async connect() {
     try {
       await this.client.connect();
-      this.db = this.client.db(this.dbName);
-      console.log(`Connected to database: ${this.dbName}`);
+      this.db = this.client.db();
+      this.connected = true;
+      console.log('Connected to MongoDB');
     } catch (error) {
-      console.error('Failed to connect to MongoDB:', error);
+      console.error('MongoDB connection error:', error);
+      this.connected = false;
     }
   }
 
-  async isAlive() {
-    try {
-      await this.client.db(this.dbName).command({ ping: 1 });
-      return true;
-    } catch (error) {
-      console.error('Erroe to ping MongoDB:', error);
-      return false;
-    }
+  isAlive() {
+    return this.connected;
   }
 
   async nbUsers() {
-    try {
-      return await this.db.collection('users').countDocuments();
-    } catch (error) {
-      console.error('Error counting users:', error);
-      return 0;
-    }
+    const usersCollection = this.client.db().collection('users');
+    return usersCollection.countDocuments();
   }
 
   async nbFiles() {
-    try {
-      return await this.db.collection('files').countDocuments();
-    } catch (error) {
-      console.error('Error counting files:', error);
-      return 0;
-    }
+    const filesCollection = this.client.db().collection('files');
+    return filesCollection.countDocuments();
   }
 }
 
-// Create and export an instance of DBClient
 const dbClient = new DBClient();
 export default dbClient;
