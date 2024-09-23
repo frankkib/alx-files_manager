@@ -178,6 +178,9 @@ class FilesController {
       if (!file) {
         return res.status(404).json({ error: 'Not found' });
       }
+      if (file.isPublic) {
+        return res.status(400).json({ error: 'Already published' });
+      }
       await dbClient.filesCollection.updateOne(
         { _id: ObjectId(fileId), userId },
         { $set: { isPublic: true } },
