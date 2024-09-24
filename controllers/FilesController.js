@@ -3,6 +3,7 @@ import fs from 'fs';
 import { promisify } from 'util';
 import path from 'path';
 import { ObjectId } from 'mongodb';
+import mime from 'mime-types';
 import redisClient from '../utils/redis';
 import dbClient from '../utils/db';
 
@@ -223,6 +224,53 @@ class FilesController {
       const updatedFile = await dbClient.filesCollection.findOne({ _id: ObjectId(fileId) });
       return res.status(200).json(updatedFile);
     } catch (error) {
+      return res.status(500).json({ error: 'Internal Server Error' });
+    }
+  }
+
+  static async getFile(req, res) {
+    const fileId = req.params.id;
+    const userToken = req.headers['x-token'];
+
+    try {
+      // Check if the file exists in the database
+      const fileDocument = await dbClient.db.collection('files').findOne({ _id: ObjectId(fileId) });
+      if (!fileDocument) {
+        return res.status(404).json({ error: 'Not found' });
+      }
+
+      // Check if the file is a folder
+      if (fileDocument.type === 'folder') {
+        return res.status(400).json({ error: "A folder doesn't have content" });
+      }
+
+      // Check if the file is public or if the user is authenticated
+      if (!fileDocument.isPublic) {
+        if (!userToken) {
+          return res.status(404).json({ error: 'Not found' });
+        }
+
+        const userId = await redisClient.get(`auth_${userToken}`);
+        if (!userId || userId !== fileDocument.userId.toString()) {
+          return res.status(404).json({ error: 'Not found' });
+        }
+      }
+
+      // Ensure the file exists locally
+      const { localPath } = fileDocument;
+      if (!fs.existsSync(localPath)) {
+        return res.status(404).json({ error: 'Not found' });
+      }
+
+      // Read the file and determine its MIME type
+      const fileContent = fs.readFileSync;
+      const mimeType = mime.lookup(fileDocument.name) || 'application/octet-stream';
+
+      // Return the file content with the correct MIME type
+      res.setHeader('Content-Type', mimeType);
+      return res.status(200).send(fileContent);
+    } catch (error) {
+      console.error('Error retrieving file:', error);
       return res.status(500).json({ error: 'Internal Server Error' });
     }
   }
