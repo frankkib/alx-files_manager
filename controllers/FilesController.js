@@ -6,6 +6,8 @@ import { ObjectId } from 'mongodb';
 import mime from 'mime-types';
 import redisClient from '../utils/redis';
 import dbClient from '../utils/db';
+import { FileQueue } from './worker';
+import e from 'express';
 
 const writeFileAsync = promisify(fs.writeFile);
 const mkdirAsync = promisify(fs.mkdir);
@@ -37,6 +39,10 @@ class FilesController {
       if (type !== 'folder' && !data) {
         return res.status(400).json({ error: 'Missing data' });
       }
+      if (type === 'image') {
+        const job = await FileQueue.add({ userId, fileId: savedFile._id});
+      }
+      return res.status(201).json({ savedFile});
 
       // Validate parentId
       if (parentId !== 0) {
@@ -229,50 +235,32 @@ class FilesController {
   }
 
   static async getFile(req, res) {
-    const fileId = req.params.id;
-    const userToken = req.headers['x-token'];
+    const { id } = req.params;
+    const { size } = req.query;
+    const token = req.headers['x-token'];
+    const user = await dbClient.findUserByToken(token);
 
-    try {
-      // Check if the file exists in the database
-      const fileDocument = await dbClient.db.collection('files').findOne({ _id: ObjectId(fileId) });
-      if (!fileDocument) {
-        return res.status(404).json({ error: 'Not found' });
-      }
-
-      // Check if the file is a folder
-      if (fileDocument.type === 'folder') {
-        return res.status(400).json({ error: "A folder doesn't have content" });
-      }
-
-      // Check if the file is public or if the user is authenticated
-      if (!fileDocument.isPublic) {
-        if (!userToken) {
-          return res.status(404).json({ error: 'Not found' });
-        }
-
-        const userId = await redisClient.get(`auth_${userToken}`);
-        if (!userId || userId !== fileDocument.userId.toString()) {
-          return res.status(404).json({ error: 'Not found' });
-        }
-      }
-
-      // Ensure the file exists locally
-      const { localPath } = fileDocument;
-      if (!fs.existsSync(localPath)) {
-        return res.status(404).json({ error: 'Not found' });
-      }
-
-      // Read the file and determine its MIME type
-      const fileContent = fs.readFileSync;
-      const mimeType = mime.lookup(fileDocument.name) || 'application/octet-stream';
-
-      // Return the file content with the correct MIME type
-      res.setHeader('Content-Type', mimeType);
-      return res.status(200).send(fileContent);
-    } catch (error) {
-      console.error('Error retrieving file:', error);
-      return res.status(500).json({ error: 'Internal Server Error' });
+    const file = await dbClient.findFileById(id);
+    if (!file) {
+      return res.status(404).json({ error: 'Not found' });
     }
+    if (!file.isPublic && (!user || user._id.toString() !== file.userId)) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    if (file.type === 'folder') {
+      return res.status(400).json({ error: "A folder doesn't have content" });
+    }
+
+    let filePath = file.localPath;
+    if (size && ['100', '250', '500'].includes(size)) {
+      filePath = `${file.localPath}_${size}`;
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ error: 'Not found' });
+      }
+    }
+
+    const mimeType = mime.lookup(filePath);
+    return res.setHeader('Content-Type', mimeType).sendFile(filePath);
   }
 }
 
